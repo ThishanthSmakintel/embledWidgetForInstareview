@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Localhost Widget Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f0f0f0; }
+    .demo { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; }
+    h1 { color: #333; text-align: center; }
+    .embed-code { background: #f5f5f5; padding: 15px; border-radius: 5px; font-family: monospace; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="demo">
+    <h1>🚀 Localhost Widget Test</h1>
+    
+    <h3>Static Widget:</h3>
+    <div class="embed-code">&lt;script src="http://localhost:3000/widget.js" data-business-id="demo123" async&gt;&lt;/script&gt;</div>
+    
+    <!-- Static Widget -->
+    <script src="http://localhost:3000/widget.js" data-business-id="demo123" async></script>
+    
+    <hr style="margin: 40px 0;">
+    
+    <h3>Floating Widget (Dark Theme):</h3>
+    <div class="embed-code">&lt;script src="http://localhost:3000/widget.js" data-business-id="floating456" data-floating="true" data-theme="dark" async&gt;&lt;/script&gt;</div>
+    
+    <p>Scroll down to see the floating widget in the bottom-right corner...</p>
+    <div style="height: 150vh; padding: 20px; background: linear-gradient(to bottom, #fff, #eee);">
+      <p>Keep scrolling...</p>
+      <br><br><br><br><br><br><br><br>
+      <p>The floating widget stays visible!</p>
+      <br><br><br><br><br><br><br><br>
+      <p>Perfect for e-commerce sites!</p>
+    </div>
+  </div>
+  
+  <!-- Floating Widget -->
+  <script src="http://localhost:3000/widget.js" data-business-id="floating456" data-floating="true" data-theme="dark" async></script>
+</body>
+</html>
