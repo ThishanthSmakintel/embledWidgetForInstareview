@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, render_template
-from data import dummy_reviews
+from fetch_data import get_processed_reviews
 
 api = Blueprint('api', __name__)
 main = Blueprint('main', __name__)
@@ -12,6 +12,10 @@ def index():
 def test_page():
     return render_template('test.html')
 
+@main.route('/restaurant')
+def restaurant_page():
+    return render_template('restaurant.html')
+
 @main.route('/widget.js')
 def widget_js():
     js_code = """
@@ -20,6 +24,7 @@ def widget_js():
   
   const script = document.currentScript;
   const businessId = script.getAttribute('data-business-id');
+  const sanitizedId = businessId.replace(/[^a-zA-Z0-9]/g, '');
   const apiUrl = script.getAttribute('data-api-url') || window.WIDGET_CONFIG?.apiUrl || 'http://localhost:5000';
   const floating = script.getAttribute('data-floating') === 'true';
   const theme = script.getAttribute('data-theme') || 'light';
@@ -53,7 +58,7 @@ def widget_js():
     .widget-card { 
       background: ${theme === 'dark' ? 'linear-gradient(135deg, rgba(17,24,39,0.95) 0%, rgba(31,41,55,0.95) 100%)' : 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)'};
       color: ${theme === 'dark' ? '#f9fafb' : '#111827'};
-      border-radius: 16px; padding: 16px; width: 280px; height: 360px;
+      border-radius: 16px; padding: 16px; width: 280px; min-height: 360px;
       box-shadow: ${theme === 'dark' ? '0 8px 25px rgba(0,0,0,0.4)' : '0 8px 25px rgba(0,0,0,0.15)'};
       backdrop-filter: blur(12px); border: 1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};
       transition: all 0.3s ease; display: flex; flex-direction: column;
@@ -124,29 +129,35 @@ def widget_js():
           </div>
         </div>
         
-        <div style="background:rgba(99,102,241,0.1);padding:12px;border-radius:12px;display:flex;align-items:center;gap:12px;margin:12px 0;">
-          <button class="widget-btn" onclick="playAudio${businessId}()" style="width:40px;height:40px;font-size:14px;"><i class="fas fa-play"></i></button>
-          <div>
-            <div style="font-weight:600;font-size:13px;"><i class="fas fa-headphones"></i> Listen to Review</div>
-            <div style="font-size:10px;opacity:0.7;">Click to play audio</div>
+        <div style="background:rgba(99,102,241,0.1);padding:12px;border-radius:12px;margin:12px 0;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <button class="widget-btn" onclick="playAudio${sanitizedId}()" style="width:40px;height:40px;font-size:14px;"><i class="fas fa-play"></i></button>
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:13px;"><i class="fas fa-headphones"></i> Listen to Review</div>
+              <div style="font-size:10px;opacity:0.7;">Duration: ${Math.floor(review.duration/60)}:${String(review.duration%60).padStart(2,'0')}</div>
+            </div>
+          </div>
+          <div id="progressBar-${sanitizedId}" style="background:rgba(255,255,255,0.2);height:8px;border-radius:4px;cursor:pointer;position:relative;" onclick="seekAudio${sanitizedId}(event)">
+            <div id="progress-${sanitizedId}" style="background:#6366f1;height:100%;width:0%;border-radius:4px;transition:width 0.1s;"></div>
+            <div id="handle-${sanitizedId}" style="position:absolute;top:-2px;width:12px;height:12px;background:#6366f1;border-radius:50%;transform:translateX(-50%);left:0%;cursor:grab;" onmousedown="startDrag${sanitizedId}(event)"></div>
           </div>
         </div>
         
-        <div style="flex:1;">
+        <div style="flex:1;min-height:0;">
           <div style="font-size:10px;opacity:0.7;margin-bottom:4px;"><i class="fas fa-comment"></i> Customer Review</div>
-          <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:12px;font-style:italic;border-left:3px solid #6366f1;line-height:1.4;font-size:12px;overflow:hidden;">"${review.text}"</div>
+          <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:12px;font-style:italic;border-left:3px solid #6366f1;line-height:1.4;font-size:12px;overflow:hidden;max-height:60px;">"${review.text}"</div>
         </div>
         
         ${widgetReviews.length > 1 ? `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:8px;">
-          <button class="nav-btn" onclick="prevReview${businessId}()" style="padding:6px 10px;font-size:11px;">←</button>
+          <button class="nav-btn" onclick="prevReview${sanitizedId}()" style="padding:6px 10px;font-size:11px;">←</button>
           <div style="display:flex;gap:4px;">
             ${widgetReviews.map((_, i) => `<div style="width:6px;height:6px;border-radius:50%;background:${i === currentIndex ? '#6366f1' : 'rgba(0,0,0,0.5)'};border:1px solid rgba(255,255,255,0.2);transition:all 0.3s;"></div>`).join('')}
           </div>
-          <button class="nav-btn" onclick="nextReview${businessId}()" style="padding:6px 10px;font-size:11px;">→</button>
+          <button class="nav-btn" onclick="nextReview${sanitizedId}()" style="padding:6px 10px;font-size:11px;">→</button>
         </div>` : ''}
         
-        <div style="text-align:center;margin:12px 0 8px 0;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
+        <div style="text-align:center;margin-top:auto;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);">
           <span style="font-size:9px;opacity:0.6;">Powered by </span>
           <a href="https://app.instareview.ai/" target="_blank" style="font-size:9px;font-weight:600;color:#6366f1;text-decoration:none;">InstaReview</a>
         </div>
@@ -154,7 +165,7 @@ def widget_js():
     `;
   }
   
-  window['playAudio' + businessId] = function() {
+  window['playAudio' + sanitizedId] = function() {
     const btn = container.querySelector('.widget-btn');
     const currentReview = widgetReviews[currentIndex];
     
@@ -177,7 +188,14 @@ def widget_js():
         
         currentAudio.onended = () => {
           btn.innerHTML = '<i class="fas fa-play"></i>';
+          document.getElementById('progress-' + sanitizedId).style.width = '0%';
           currentAudio = null;
+        };
+        
+        currentAudio.ontimeupdate = () => {
+          const progress = (currentAudio.currentTime / currentAudio.duration) * 100;
+          document.getElementById('progress-' + sanitizedId).style.width = progress + '%';
+          document.getElementById('handle-' + sanitizedId).style.left = progress + '%';
         };
       } else {
         setTimeout(() => {
@@ -197,14 +215,45 @@ def widget_js():
     }
   };
   
-  window['nextReview' + businessId] = function() {
+  window['nextReview' + sanitizedId] = function() {
     currentIndex = (currentIndex + 1) % widgetReviews.length;
     updateReview();
   };
   
-  window['prevReview' + businessId] = function() {
+  window['prevReview' + sanitizedId] = function() {
     currentIndex = (currentIndex - 1 + widgetReviews.length) % widgetReviews.length;
     updateReview();
+  };
+  
+  window['seekAudio' + sanitizedId] = function(event) {
+    if (currentAudio) {
+      const rect = event.target.getBoundingClientRect();
+      const percent = (event.clientX - rect.left) / rect.width;
+      currentAudio.currentTime = percent * currentAudio.duration;
+    }
+  };
+  
+  let isDragging = false;
+  window['startDrag' + sanitizedId] = function(event) {
+    isDragging = true;
+    event.preventDefault();
+    
+    const onMouseMove = (e) => {
+      if (isDragging && currentAudio) {
+        const rect = document.getElementById('progressBar-' + sanitizedId).getBoundingClientRect();
+        const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        currentAudio.currentTime = percent * currentAudio.duration;
+      }
+    };
+    
+    const onMouseUp = () => {
+      isDragging = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   };
 })();
     """
@@ -212,4 +261,5 @@ def widget_js():
 
 @api.route('/reviews/<business_id>')
 def get_reviews(business_id):
-    return jsonify({'reviews': dummy_reviews})
+    data = get_processed_reviews()
+    return jsonify({'company': data['company'], 'reviews': data['reviews']})
