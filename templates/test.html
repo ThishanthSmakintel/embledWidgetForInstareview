@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask Widget Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #333; }
+        .test-section { margin: 40px 0; padding: 20px; background: white; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Flask Review Widget Test</h1>
+        
+        <div class="test-section">
+            <h2>Embedded Widget (Light Theme)</h2>
+            <script src="http://localhost:5000/widget.js" 
+                    data-business-id="test123" 
+                    data-theme="light"></script>
+        </div>
+        
+        <div class="test-section" style="background: #1a1a1a; color: white;">
+            <h2>Embedded Widget (Dark Theme)</h2>
+            <script src="http://localhost:5000/widget.js" 
+                    data-business-id="test456" 
+                    data-theme="dark"></script>
+        </div>
+        
+        <div class="test-section">
+            <h2>Floating Widget</h2>
+            <p>Check bottom-right corner for floating widget</p>
+            <script src="http://localhost:5000/widget.js" 
+                    data-business-id="test789" 
+                    data-floating="true"
+                    data-theme="light"></script>
+        </div>
+    </div>
+</body>
+</html>

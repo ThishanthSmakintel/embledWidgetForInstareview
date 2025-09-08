@@ -1,9 +1,26 @@
+from flask import Blueprint, jsonify, render_template
+from data import dummy_reviews
+
+api = Blueprint('api', __name__)
+main = Blueprint('main', __name__)
+
+@main.route('/')
+def index():
+    return render_template('index.html')
+
+@main.route('/test')
+def test_page():
+    return render_template('test.html')
+
+@main.route('/widget.js')
+def widget_js():
+    js_code = """
 (function() {
   'use strict';
   
   const script = document.currentScript;
   const businessId = script.getAttribute('data-business-id');
-  const apiUrl = script.getAttribute('data-api-url') || window.WIDGET_CONFIG?.apiUrl || 'http://localhost:3000';
+  const apiUrl = script.getAttribute('data-api-url') || window.WIDGET_CONFIG?.apiUrl || 'http://localhost:5000';
   const floating = script.getAttribute('data-floating') === 'true';
   const theme = script.getAttribute('data-theme') || 'light';
   
@@ -12,7 +29,6 @@
     return;
   }
   
-  // Create widget container
   const widgetId = 'review-widget-' + businessId;
   const container = document.createElement('div');
   container.id = widgetId;
@@ -24,13 +40,11 @@
     script.parentNode.insertBefore(container, script.nextSibling);
   }
   
-  // Inject Font Awesome
   const fontAwesome = document.createElement('link');
   fontAwesome.rel = 'stylesheet';
   fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
   document.head.appendChild(fontAwesome);
   
-  // Inject styles
   const style = document.createElement('style');
   style.textContent = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -69,7 +83,6 @@
   `;
   document.head.appendChild(style);
   
-  // Fetch and render widget
   fetch(`${apiUrl}/api/reviews/${businessId}`)
     .then(res => res.json())
     .then(data => renderWidget(data.reviews || []))
@@ -77,12 +90,12 @@
   
   let currentIndex = 0;
   let widgetReviews = [];
+  let currentAudio = null;
   
   function renderWidget(reviews) {
     if (reviews.length === 0) {
       reviews = [{ name: 'Demo User', date: 'Today', rating: 5, text: 'Great service!' }];
     }
-    
     widgetReviews = reviews;
     updateReview();
   }
@@ -141,29 +154,45 @@
     `;
   }
   
-  // Widget functions
   window['playAudio' + businessId] = function() {
     const btn = container.querySelector('.widget-btn');
     const currentReview = widgetReviews[currentIndex];
     
     if (btn.innerHTML.includes('fa-play')) {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+      }
+      
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
       
       if (currentReview.audio) {
-        const audio = new Audio(currentReview.audio);
-        audio.play().then(() => {
+        currentAudio = new Audio(currentReview.audio);
+        currentAudio.play().then(() => {
           btn.innerHTML = '<i class="fas fa-pause"></i>';
-          audio.onended = () => btn.innerHTML = '<i class="fas fa-play"></i>';
         }).catch(() => {
           btn.innerHTML = '<i class="fas fa-play"></i>';
+          currentAudio = null;
         });
+        
+        currentAudio.onended = () => {
+          btn.innerHTML = '<i class="fas fa-play"></i>';
+          currentAudio = null;
+        };
       } else {
         setTimeout(() => {
           btn.innerHTML = '<i class="fas fa-pause"></i>';
-          setTimeout(() => btn.innerHTML = '<i class="fas fa-play"></i>', 3000);
+          setTimeout(() => {
+            btn.innerHTML = '<i class="fas fa-play"></i>';
+            currentAudio = null;
+          }, 3000);
         }, 500);
       }
     } else {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+      }
       btn.innerHTML = '<i class="fas fa-play"></i>';
     }
   };
@@ -178,3 +207,9 @@
     updateReview();
   };
 })();
+    """
+    return js_code, 200, {'Content-Type': 'application/javascript'}
+
+@api.route('/reviews/<business_id>')
+def get_reviews(business_id):
+    return jsonify({'reviews': dummy_reviews})
