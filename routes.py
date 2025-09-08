@@ -117,7 +117,7 @@ def widget_js():
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           <div class="rating-stars" style="font-size:16px;font-weight:600;">★★★★★</div>
           <span style="font-weight:600;font-size:14px;">${avgRating}</span>
-          <span style="font-size:10px;opacity:0.7;">rating</span>
+          <span style="font-size:10px;opacity:0.7;">Rating</span>
           <div style="background:rgba(99,102,241,0.1);color:#6366f1;font-size:10px;font-weight:500;padding:4px 8px;border-radius:12px;">${widgetReviews.length} reviews</div>
         </div>
         
@@ -133,13 +133,9 @@ def widget_js():
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
             <button class="widget-btn" onclick="playAudio${sanitizedId}()" style="width:40px;height:40px;font-size:14px;"><i class="fas fa-play"></i></button>
             <div style="flex:1;">
-              <div style="font-weight:600;font-size:13px;"><i class="fas fa-headphones"></i> Listen to Review</div>
+              <div style="font-weight:600;font-size:13px;"><i class="fas fa-headphones"></i> Listen Full Review </div>
               <div style="font-size:10px;opacity:0.7;">Duration: ${Math.floor(review.duration/60)}:${String(review.duration%60).padStart(2,'0')}</div>
             </div>
-          </div>
-          <div id="progressBar-${sanitizedId}" style="background:rgba(255,255,255,0.2);height:8px;border-radius:4px;cursor:pointer;position:relative;" onclick="seekAudio${sanitizedId}(event)">
-            <div id="progress-${sanitizedId}" style="background:#6366f1;height:100%;width:0%;border-radius:4px;transition:width 0.1s;"></div>
-            <div id="handle-${sanitizedId}" style="position:absolute;top:-2px;width:12px;height:12px;background:#6366f1;border-radius:50%;transform:translateX(-50%);left:0%;cursor:grab;" onmousedown="startDrag${sanitizedId}(event)"></div>
           </div>
         </div>
         
