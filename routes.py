@@ -159,7 +159,7 @@ def widget_js():
         
         <div style="text-align:center;margin-top:auto;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);">
           <span style="font-size:9px;opacity:0.6;">Powered by </span>
-          <a href="https://app.instareview.ai/" target="_blank" style="font-size:9px;font-weight:600;color:#6366f1;text-decoration:none;">InstaReview</a>
+          <a href="https://instareview.ai" target="_blank" style="font-size:9px;font-weight:600;color:#6366f1;text-decoration:none;">InstaReview</a>
         </div>
       </div>
     `;

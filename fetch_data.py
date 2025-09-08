@@ -36,7 +36,7 @@ def process_api_data(api_data):
     processed_reviews = []
     
     for item in api_data:
-        if isinstance(item, dict) and item.get('id') == '1756653729548':
+        if isinstance(item, dict) and item.get('id') in ('1756653729548', '1757316791088'):
             quess_data = item.get('quess', [])
             metadata = item.get('metaData', {})
             transcript = item.get('transcribe', '')
