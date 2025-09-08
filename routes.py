@@ -1,5 +1,8 @@
+import os
+import json
+import boto3
+import requests
 from flask import Blueprint, jsonify, render_template
-from fetch_data import get_processed_reviews
 
 api = Blueprint('api', __name__)
 main = Blueprint('main', __name__)
@@ -16,9 +19,97 @@ def test_page():
 def restaurant_page():
     return render_template('restaurant.html')
 
+
+def get_s3_audio_url(voice_filename):
+    """Get S3 presigned URL using boto3"""
+    S3_BUCKET = os.getenv("S3_BUCKET")
+    
+    if voice_filename and S3_BUCKET:
+        try:
+            s3_client = boto3.client('s3')
+            s3_key = f"voice/{voice_filename}"
+            url = s3_client.generate_presigned_url('get_object', 
+                                                 Params={'Bucket': S3_BUCKET, 'Key': s3_key},
+                                                 ExpiresIn=3600)
+            return url
+        except Exception as e:
+            print(f"Error generating S3 presigned URL: {e}") 
+    return 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav'
+
+def fetch_api_data(business_id):
+    """Fetch data from AWS API"""
+    try:
+        url = "https://mi6hmfm0b5.execute-api.ap-southeast-1.amazonaws.com/prod/company/reviews-no-auth/"
+        response = requests.get(url, params={'companyId': business_id})
+        return response.json() if response.status_code == 200 else []
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching API data: {e}")
+        return []
+
+def process_api_data(api_data):
+    """Extract metadata and quess columns from API data"""
+    processed_reviews = []
+    
+    for item in api_data:
+        if isinstance(item, dict) and item.get('id') in ('1757322288349', '1757322711026'):
+            quess_data = item.get('quess', [])
+            metadata = item.get('metaData', {})
+            transcript = item.get('transcribe', '')
+            
+            # Parse metadata if it's a string
+            if isinstance(metadata, str):
+                try:
+                    metadata = json.loads(metadata)
+                except json.JSONDecodeError:
+                    metadata = {}
+            
+            # Get feedback analysis
+            feedback_analysis = metadata.get('feedbackAnalysis', {}) if isinstance(metadata, dict) else {}
+            
+            # Calculate average rating
+            avg_rating = round(sum(q.get('answer', 0) for q in quess_data) / len(quess_data)) if quess_data else 3
+
+            # Mask email more securely
+            email = item.get('userEmail', '')
+            if '@' in email:
+                domain = email.split('@')[1]
+                masked_email = email[0] + '***@***.' + domain.split('.')[-1]
+            else:
+                masked_email = 'u***@***.com'
+            
+            text = transcript or 'No transcript available'
+            
+            # Get audio duration
+            audio_duration = metadata.get('audioDurationSec', 0) if isinstance(metadata, dict) else 0
+            
+            review = {
+                'name': masked_email,
+                'date': item.get('submittedAt', 'Recent')[:10] if item.get('submittedAt') else 'Recent',
+                'rating': avg_rating,
+                'text': text,
+                'audio': get_s3_audio_url(item.get('voiceFileName', '')),
+                'duration': audio_duration,
+                'sentiment': feedback_analysis.get('overallSentiment', 'Neutral'),
+                'tone': feedback_analysis.get('tonePrimary', 'Neutral'),
+                'complaints': feedback_analysis.get('complaintsDetected', False)
+            }
+            processed_reviews.append(review)
+    
+    return processed_reviews
+
 @main.route('/widget.js')
 def widget_js():
     js_code = """
+/*
+  NOTE: For production environments, it is highly recommended to serve this JavaScript
+  from a static file (.js) rather than embedding it as a multiline string in Python.
+  This improves performance, allows for browser caching, and makes development
+  (linting, formatting, syntax highlighting) much easier.
+
+  You could use Flask's `send_from_directory` to serve a static JS file.
+  Example:
+  return send_from_directory('static/js', 'widget.js')
+*/
 (function() {
   'use strict';
   
@@ -89,9 +180,15 @@ def widget_js():
   document.head.appendChild(style);
   
   fetch(`${apiUrl}/api/reviews/${businessId}`)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) {
+        // If response is not 2xx, throw an error to be caught by .catch()
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      return res.json();
+    })
     .then(data => renderWidget(data.reviews || []))
-    .catch(() => renderWidget([]));
+    .catch(() => renderErrorWidget());
   
   let currentIndex = 0;
   let widgetReviews = [];
@@ -99,10 +196,30 @@ def widget_js():
   
   function renderWidget(reviews) {
     if (reviews.length === 0) {
-      reviews = [{ name: 'Demo User', date: 'Today', rating: 5, text: 'Great service!' }];
+      // If there are no reviews, but the company was found, show a message.
+      container.innerHTML = `
+        <div class="widget-card">
+          <div style="text-align:center;margin:auto;padding:20px;">
+            <div style="font-size:48px;margin-bottom:16px;">👍</div>
+            <div style="font-weight:600;font-size:16px;margin-bottom:8px;">No Reviews Yet</div>
+            <div style="font-size:12px;opacity:0.7;">Be the first to leave a review!</div>
+          </div>
+        </div>
+      `;
+      return;
     }
     widgetReviews = reviews;
     updateReview();
+  }
+
+  function renderErrorWidget() {
+    container.innerHTML = `
+      <div class="widget-card" style="justify-content:center;align-items:center;text-align:center;">
+        <div style="font-size:48px;margin-bottom:16px;">🤔</div>
+        <div style="font-weight:600;font-size:16px;margin-bottom:8px;">Company Not Found</div>
+        <div style="font-size:12px;opacity:0.7;">Please check the business ID.</div>
+      </div>
+    `;
   }
   
   function updateReview() {
@@ -257,5 +374,16 @@ def widget_js():
 
 @api.route('/reviews/<business_id>')
 def get_reviews(business_id):
-    data = get_processed_reviews()
-    return jsonify({'company': data['company'], 'reviews': data['reviews']})
+    api_data = fetch_api_data(business_id)
+
+    # If no data is returned from the API, assume the company is not found.
+    if not api_data:
+        return jsonify({"error": f"Company with ID '{business_id}' not available or found."}), 404
+
+    processed_reviews = process_api_data(api_data)
+    
+    response_data = {
+        "company": {"companyName": f"Company {business_id}", "city": "Unknown", "industry": "Unknown"},
+        "reviews": processed_reviews
+    }
+    return jsonify(response_data)
