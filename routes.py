@@ -141,7 +141,7 @@ def widget_js():
         
         <div style="flex:1;min-height:0;">
           <div style="font-size:10px;opacity:0.7;margin-bottom:4px;"><i class="fas fa-comment"></i> Customer Review</div>
-          <div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:12px;font-style:italic;border-left:3px solid #6366f1;line-height:1.4;font-size:12px;overflow:hidden;max-height:60px;">"${review.text}"</div>
+          <div style="background:rgba(0,0,0,0.05);padding:8px 12px;border-radius:8px;font-style:italic;border-left:3px solid #6366f1;line-height:1.5;font-size:12px;max-height:100px;overflow-y:hidden;">"${review.text}"</div>
         </div>
         
         ${widgetReviews.length > 1 ? `

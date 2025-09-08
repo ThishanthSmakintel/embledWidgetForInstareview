@@ -36,7 +36,7 @@ def process_api_data(api_data):
     processed_reviews = []
     
     for item in api_data:
-        if isinstance(item, dict) and item.get('id') in ('1756653729548', '1757316791088'):
+        if isinstance(item, dict) and item.get('id') in ('1757322288349', '1757322711026'):
             quess_data = item.get('quess', [])
             metadata = item.get('metaData', {})
             transcript = item.get('transcribe', '')
@@ -62,11 +62,7 @@ def process_api_data(api_data):
             else:
                 masked_email = 'u***@***.com'
             
-            # Use configurable character limit
-            char_limit = int(os.getenv('CHAR_LIMIT', 250))
             text = transcript or 'No transcript available'
-            if len(text) > char_limit:
-                text = text[:char_limit] + '...'
             
             # Get audio duration
             audio_duration = metadata.get('audioDurationSec', 0) if isinstance(metadata, dict) else 0
